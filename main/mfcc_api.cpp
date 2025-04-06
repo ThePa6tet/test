@@ -1,35 +1,59 @@
-// mfcc_processor.c
+// File: main/mfcc_api.cpp
+
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "esp_dsp.h"
 #include "dsps_fft2r.h"
 #include "dsps_wind.h"
 #include "dsps_dct.h"
-#include "mfcc_processor.h"
+#include "mfcc_api.h"
 #include "esp_heap_caps.h"
-#include "esp_log.h"
 
-static const char *TAG = "MFCC";
+#define PI          3.14159265359f
+#define SAMPLE_RATE 16000
 
-static float* window;
-static float* fft_input;
-static float* fft_mag;
-static float* mel_energies;
-static float* windowed;
+static const char *TAG = "MFCC_API";
 
-void mfcc_preprocess_init(void) {
-    window       = (float*)heap_caps_malloc(FRAME_LEN * sizeof(float), MALLOC_CAP_INTERNAL);
-    fft_input    = (float*)heap_caps_malloc(FRAME_LEN * 2 * sizeof(float), MALLOC_CAP_INTERNAL);
-    fft_mag      = (float*)heap_caps_malloc((FRAME_LEN / 2) * sizeof(float), MALLOC_CAP_INTERNAL);
-    mel_energies = (float*)heap_caps_malloc(MEL_BANDS * sizeof(float), MALLOC_CAP_INTERNAL);
-    windowed     = (float*)heap_caps_malloc(FRAME_LEN * sizeof(float), MALLOC_CAP_INTERNAL);
+static float *window;
+static float *fft_input;
+static float *fft_mag;
+static float *mel_energies;
+static float *windowed;
+static float *output_mfcc;
 
-    if (!window || !fft_input || !fft_mag || !mel_energies || !windowed) {
-        ESP_LOGE(TAG, "Не удалось выделить буферы MFCC");
-        abort();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+bool mfcc_init(void) {
+    if (window != NULL) {
+        ESP_LOGW(TAG, "mfcc_init already called. Call mfcc_deinit first.");
+        return false;
+    }
+    
+
+    ESP_LOGI(TAG, "Allocating buffers...");
+    window = fft_input = fft_mag = mel_energies = windowed = output_mfcc = NULL;
+    
+    window        = (float*)heap_caps_malloc(FRAME_LEN * sizeof(float), MALLOC_CAP_INTERNAL);
+    fft_input     = (float*)heap_caps_malloc(FRAME_LEN * 2 * sizeof(float), MALLOC_CAP_INTERNAL);
+    fft_mag       = (float*)heap_caps_malloc((FRAME_LEN / 2) * sizeof(float), MALLOC_CAP_INTERNAL);
+    mel_energies  = (float*)heap_caps_malloc(MEL_BANDS * sizeof(float), MALLOC_CAP_INTERNAL);
+    windowed      = (float*)heap_caps_malloc(FRAME_LEN * sizeof(float), MALLOC_CAP_INTERNAL);
+    output_mfcc   = (float*)heap_caps_malloc(MFCC_NUM * sizeof(float), MALLOC_CAP_INTERNAL);
+
+    if (!window || !fft_input || !fft_mag || !mel_energies || !windowed || !output_mfcc) {
+        ESP_LOGE(TAG, "MFCC buffer allocation failed");
+        return false;
     }
 
     dsps_wind_hann_f32(window, FRAME_LEN);
     dsps_fft2r_init_fc32(NULL, CONFIG_DSP_MAX_FFT_SIZE);
+    ESP_LOGI(TAG, "MFCC buffers initialized");
+    return true;
 }
 
 static void compute_magnitude(const float *fft, float *mag, int len) {
@@ -76,9 +100,10 @@ static void mel_filterbank(const float *spectrum, float *mel_out, int fft_bins, 
     }
 }
 
-void mfcc_preprocess(const float *input_frame, float *mfcc_out) {
-    dsps_mul_f32((float *)input_frame, window, windowed, FRAME_LEN, 1, 1, 1);
+const float* mfcc_compute(const float *input_frame) {
+    ESP_LOGI(TAG, "Computing MFCCs...");
 
+    dsps_mul_f32((float *)input_frame, window, windowed, FRAME_LEN, 1, 1, 1);
     for (int i = 0; i < FRAME_LEN; i++) {
         fft_input[i * 2 + 0] = windowed[i];
         fft_input[i * 2 + 1] = 0;
@@ -93,6 +118,30 @@ void mfcc_preprocess(const float *input_frame, float *mfcc_out) {
     dsps_dct_f32(mel_energies, MEL_BANDS);
 
     for (int i = 0; i < MFCC_NUM; i++) {
-        mfcc_out[i] = mel_energies[i];
+        output_mfcc[i] = mel_energies[i];
     }
+
+    return output_mfcc;
 }
+
+
+const float* mfcc_output(void) {
+    return output_mfcc;
+}
+
+void mfcc_deinit(void) {
+    ESP_LOGI(TAG, "Deinitializing MFCC buffers...");
+
+    if (window) free(window);
+    if (fft_input) free(fft_input);
+    if (fft_mag) free(fft_mag);
+    if (mel_energies) free(mel_energies);
+    if (windowed) free(windowed);
+    if (output_mfcc) free(output_mfcc);
+
+    window = fft_input = fft_mag = mel_energies = windowed = output_mfcc = nullptr;
+}
+
+#ifdef __cplusplus
+}
+#endif

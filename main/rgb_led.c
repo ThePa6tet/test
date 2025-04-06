@@ -1,5 +1,4 @@
 //rgb_led.c
-
 #include "rgb_led.h"
 #include "led_strip.h"
 #include "esp_err.h"
@@ -28,8 +27,8 @@ void rgb_led_init(void) {
 }
 
 void rgb_led_set_color(uint8_t r, uint8_t g, uint8_t b) {
-    led_strip_set_pixel(led_strip, 0, r, g, b);
-    led_strip_refresh(led_strip);
+    ESP_ERROR_CHECK(led_strip_set_pixel(led_strip, 0, r, g, b));
+    ESP_ERROR_CHECK(led_strip_refresh(led_strip));
 }
 
 // Пресеты
