@@ -111,15 +111,18 @@ esp_err_t read_csv_file(const char *file_path, float *buffer, size_t max_samples
         return ESP_FAIL;
     }
 
-    char line[32];
     size_t index = 0;
+    char line[256];
+
     while (fgets(line, sizeof(line), file) && index < max_samples) {
-        buffer[index] = strtof(line, NULL);
-        index++;
+        char *ptr = strtok(line, ",");
+        while (ptr && index < max_samples) {
+            buffer[index++] = strtof(ptr, NULL);
+            ptr = strtok(NULL, ",");
+        }
     }
 
     fclose(file);
-
     if (out_samples) {
         *out_samples = index;
     }
@@ -127,6 +130,7 @@ esp_err_t read_csv_file(const char *file_path, float *buffer, size_t max_samples
     ESP_LOGI(TAG, "CSV file read successfully: %s, samples: %d", file_path, (int)index);
     return ESP_OK;
 }
+
 
 // Упрощённый вариант: читаем один файл напрямую
 esp_err_t read_single_csv_from_d(float *buffer, size_t max_samples, size_t *out_samples) {

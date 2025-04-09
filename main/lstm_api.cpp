@@ -1,5 +1,3 @@
-// File: main/lstm_api.cpp
-
 #include "lstm_api.h"
 #include "model.h"
 #include "esp_log.h"
@@ -9,7 +7,7 @@
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include <inttypes.h>
 
-constexpr int kTensorArenaSize = 512 * 1024;
+constexpr int kTensorArenaSize = 1024 * 1024;
 static const char *TAG = "LSTM_API";
 
 static uint8_t *tensor_arena = nullptr;
@@ -18,6 +16,8 @@ static const tflite::Model *model = nullptr;
 static tflite::MicroInterpreter *interpreter = nullptr;
 
 static tflite::MicroMutableOpResolver<14> resolver;
+
+
 
 bool lstm_init() {
     if (interpreter != nullptr) {
@@ -102,3 +102,28 @@ void lstm_deinit() {
     model = nullptr;
 }
 
+bool lstm_set_input_f32(const float* data, size_t length) {
+    TfLiteTensor* input = lstm_input();
+    if (!input) {
+        ESP_LOGE(TAG, "Input tensor is null");
+        return false;
+    }
+    if ((size_t)(input->bytes / sizeof(float)) != length) {
+        ESP_LOGE(TAG, "Input size mismatch: expected %d floats, got %d", input->bytes / (int)sizeof(float), (int)length);
+        return false;
+    }
+    memcpy(input->data.f, data, length * sizeof(float));
+    return true;
+}
+
+
+const float* lstm_get_output(size_t* out_len) {
+    TfLiteTensor* output = lstm_output();
+    if (!output || output->type != kTfLiteFloat32) {
+        ESP_LOGE(TAG, "Output tensor invalid");
+        if (out_len) *out_len = 0;
+        return nullptr;
+    }
+    if (out_len) *out_len = output->bytes / sizeof(float);
+    return output->data.f;
+}
