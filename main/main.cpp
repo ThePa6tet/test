@@ -1,3 +1,6 @@
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG    // до esp_log.h
+#define ESP_NN_ENABLE_LOG 1              // до esp_nn.h, если подключаешь напрямую
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -10,12 +13,15 @@
 #include <dirent.h>
 #include "esp_task_wdt.h"
 
+
 #define TAG "MAIN"
 #define SAMPLE_SIZE 1024
 #define FRAME_LEN   256
 #define MFCC_NUM    13
 #define LSTM_TIMESTEPS 99
 #define LSTM_INPUT_SIZE (LSTM_TIMESTEPS * MFCC_NUM)
+#define ESPNN_MATH
+
 
 static float g_audio_frame[FRAME_LEN];
 

@@ -1,13 +1,15 @@
-set(SRCS
-    main.cpp
-    lstm_api.cpp
-    mfcc_api.cpp  
-    sdcard_manager.cpp
+idf_component_register(
+    SRCS
+        main.cpp
+        lstm_api.cpp
+        mfcc_api.cpp
+        sdcard_manager.cpp
+    INCLUDE_DIRS
+        .
 )
 
-set(INCLUDES
-    .
+# Добавляем флаги компиляции для esp_nn
+target_compile_definitions(${COMPONENT_LIB} PRIVATE
+    ESP_NN_ENABLE_LOG=1
+    LOG_LOCAL_LEVEL=ESP_LOG_DEBUG
 )
-
-idf_component_register(SRCS "sdcard_manager.cpp" "lstm_api.cpp" "main.cpp" "${SRCS}"
-                       INCLUDE_DIRS "${INCLUDES}")

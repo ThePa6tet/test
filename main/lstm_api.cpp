@@ -15,7 +15,7 @@ static uint8_t *model_copy = nullptr;
 static const tflite::Model *model = nullptr;
 static tflite::MicroInterpreter *interpreter = nullptr;
 
-static tflite::MicroMutableOpResolver<14> resolver;
+static tflite::MicroMutableOpResolver<21> resolver;
 
 
 
@@ -58,7 +58,9 @@ bool lstm_init() {
     resolver.AddShape(); resolver.AddStridedSlice(); resolver.AddTranspose();
     resolver.AddUnpack(); resolver.AddPack(); resolver.AddFill();
     resolver.AddAdd(); resolver.AddSplit(); resolver.AddLogistic();
-    resolver.AddMul(); resolver.AddTanh();
+    resolver.AddMul(); resolver.AddTanh(); resolver.AddPad(); resolver.AddExpandDims();
+    resolver.AddConv2D();resolver.AddReshape(); resolver.AddSpaceToBatchNd(); resolver.AddBatchToSpaceNd();
+    resolver.AddMean();
 
     static tflite::MicroInterpreter static_interpreter(model, resolver, tensor_arena, kTensorArenaSize);
     interpreter = &static_interpreter;
